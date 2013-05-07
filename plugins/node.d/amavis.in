@@ -85,6 +85,16 @@ if ( defined($ARGV[0]) and $ARGV[0] eq "autoconf" )
     exit 0;
 }
 
+my @state = restore_state();
+
+my $pos = shift @state;
+
+my $startsize = (stat $logfile)[7];
+
+$pos = $startsize unless defined($pos);
+
+my %mails = @state;
+
 if ( $ARGV[0] and $ARGV[0] eq "config" )
 {
     print "graph_title Amavis filter statistics\n";
@@ -93,54 +103,25 @@ if ( $ARGV[0] and $ARGV[0] eq "config" )
     print "graph_scale no\n";
     print "graph_args --base 1000 -l 0\n";
     print "graph_period minute\n";
+    print "graph_order virus spam_maybe spam_sure total\n";
 
-    print "virus.label virus\n";
-    print "virus.type DERIVE\n";
-    print "virus.info Number of viruses caught in email\n";
-    print "spam_maybe.label probably spam\n";
-    print "spam_maybe.type DERIVE\n";
-    print "spam_maybe.info Emails amavis thinks probably contain spam\n";
-    print "spam_sure.label surely spam\n";
-    print "spam_sure.type DERIVE\n";
-    print "spam_sure.info Emails amavis is sure to contain spam\n";
-    print "total.label total mails\n";
-    print "total.type DERIVE\n";
-    print "total.info Total emails evaluated by amavis\n";
+    foreach my $i (sort keys %mails)
+    {
+        print "$i.label $i\n";
+        print "$i.type DERIVE\n";
+        print "$i.info Number of $i mails evaluated by amavis\n";
+    }
     exit 0;
-}
-
-if (! -f $logfile) 
-{
-    print "virus.value U\n";
-    print "spam_maybe.value U\n";
-    print "spam_sure.value U\n";
-    print "total.value U\n";
-    exit 0;
-}
-
-my ($pos, $virus, $spam_maybe, $spam_sure, $total) = restore_state();
-
-$virus = 0 unless defined($virus);
-$spam_maybe = 0 unless defined($spam_maybe);
-$spam_sure = 0 unless defined($spam_sure);
-$total = 0 unless defined($total);
-
-my $startsize = (stat $logfile)[7];
-
-if (!defined $pos)
-{
-    # Initial run.
-    $pos = $startsize;
 }
 
 $pos = parseLogfile($logfile, $pos, $startsize);
 
-print "virus.value $virus\n";
-print "spam_maybe.value $spam_maybe\n";
-print "spam_sure.value $spam_sure\n";
-print "total.value $total\n";
+foreach my $i (sort keys %mails)
+{
+    print "$i.value ", $mails{$i}, "\n";
+}
 
-save_state($pos, $virus, $spam_maybe, $spam_sure, $total);
+save_state($pos, %mails);
 
 sub parseLogfile 
 {    
@@ -155,19 +136,19 @@ sub parseLogfile
 
 	if ($line =~ /amavis.*(PASSED CLEAN|SPAMMY|INFECTED|SPAM), .*Hits:/i)
 	{
-	    $total++;
+	    $mails{total}++;
 
 	    if ($line =~ /INFECTED /i)
 	    {
-	        $virus++;
+	        $mails{virus}++;
 	    }
 	    elsif ($line =~ /SPAMMY /i)
 	    {
-	        $spam_maybe++;
+	        $mails{spam_maybe}++;
 	    }
 	    elsif ($line =~ /SPAM /i)
 	    {
-	        $spam_sure++;
+	        $mails{spam_sure}++;
 	    }
 	}
     }
