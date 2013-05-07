@@ -118,7 +118,7 @@ $pos = parseLogfile($logfile, $pos, $startsize);
 
 foreach my $i (sort keys %mails)
 {
-    print "$i.value ", $mails{$i}, "\n";
+    print "$i.value $mails{$i}\n";
 }
 
 save_state($pos, %mails);
