@@ -17,12 +17,14 @@ if you need to override the defaults below:
  [amavis]
   env.logdir  - Which logfile to use
   env.logfile - What file to read in logdir
+  env.amavisd - Path to amavisd binary
 
 =head2 DEFAULT CONFIGURATION
 
  [amavis]
   env.logdir  /var/log
   env.logfile mail.log
+  env.amavisd /usr/sbin/amavisd
 
 =head1 AUTHOR
 
@@ -53,33 +55,42 @@ use Munin::Plugin;
 
 my $LOGDIR  = (defined($ENV{'logdir'}) ? $ENV{'logdir'} : '/var/log');
 my $LOGFILE = (defined($ENV{'logdir'}) ? $ENV{'logfile'} : 'mail.info');
+my $AMAVISD = (defined($ENV{'amavisd'}) ? $ENV{'amavisd'} : '/usr/sbin/amavisd');
 
 my $logfile = "$LOGDIR/$LOGFILE";
 
 if ( defined($ARGV[0]) and $ARGV[0] eq "autoconf" )
 {
-    if (-d $LOGDIR)
+    `which $AMAVISD >/dev/null 2>/dev/null`;
+    if (!$?)
     {
-        if (-f $logfile)
+        if (-d $LOGDIR)
         {
-            if (-r $logfile)
+            if (-f $logfile)
             {
-                print "yes\n";
-                exit 0;
+                if (-r $logfile)
+                {
+                    print "yes\n";
+                    exit 0;
+                }
+                else
+                {
+                    print "no (logfile '$logfile' not readable)\n";
+                }
             }
             else
             {
-                print "no (logfile '$logfile' not readable)\n";
+                print "no (logfile '$logfile' not found)\n";
             }
         }
         else
         {
-            print "no (logfile '$logfile' not found)\n";
+            print "no (could not find logdir '$LOGDIR')\n";
         }
     }
     else
     {
-        print "no (could not find logdir '$LOGDIR')\n";
+        print "no (could not find amavis)\n";
     }
     exit 0;
 }
